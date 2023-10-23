@@ -1,0 +1,147 @@
+blueprint:
+  name: Zigbee2MQTT - Tuya Smart Knob TS004F
+  description: Automate your Tuya Smart Knob (_TZ3000_4fjiwweb) via Zigbee2MQTT.
+  domain: automation
+  input:
+    switch:
+      name: TS004F Tuya Smart Knob
+      description: Tuya Smart Knob to use
+      selector:
+        entity:
+          domain: sensor
+          integration: mqtt
+    short_press:
+      name: Single Press
+      description: Action to run on single press
+      default: []
+      selector:
+        action: {}
+    double_press:
+      name: Double Press
+      description: Action to run on double press
+      default: []
+      selector:
+        action: {}
+    toggle:
+      name: Toggle
+      description: Action to run on Toggle
+      default: []
+      selector:
+        action: {}
+    hold:
+      name: Hold
+      description: Action to run on hold
+      default: []
+      selector:
+        action: {}
+    rotate_left:
+      name: Rotate - Left
+      description: Action to run on left rotation
+      default: []
+      selector:
+        action: {}
+    rotate_right:
+      name: Rotate - Right
+      description: Action to run on right rotation
+      default: []
+      selector:
+        action: {}
+    brightness_step_up:
+      name: Brightness Step Up
+      description: Action to run on right rotation
+      default: []
+      selector:
+        action: {}
+    brightness_step_down:
+      name: Brightness Step Down
+      description: Action to run on left rotation
+      default: []
+      selector:
+        action: {}
+    color_temperature_step_up:
+      name: Color Temperature Step Up
+      description: Action to run on hold & right rotation
+      default: []
+      selector:
+        action: {}
+    color_temperature_step_down:
+      name: Color Temperature Step Down
+      description: Action to run on hold & left rotation
+      default: []
+      selector:
+        action: {}
+    move_hue:
+      name: Move Hue
+      description: Action to run on moving hue
+      default: []
+      selector:
+        action: {}
+    stop_move_step:
+      name: Stop Move Step
+      description: Action to run on stopping move step
+      default: []
+      selector:
+        action: {}
+mode: single
+max_exceeded: silent
+trigger:
+  - platform: state
+    entity_id: !input "switch"
+    attribute: action
+action:
+  - variables:
+      command: "{{ trigger.to_state.attributes.action }}"
+  - choose:
+      - conditions:
+        - '{{ command == ''single'' }}'
+        sequence: !input 'short_press'
+      - conditions:
+        - '{{ command == ''double'' }}'
+        sequence: !input 'double_press'
+      - conditions:
+        - '{{ command == ''toggle'' }}'
+        sequence: !input 'toggle'
+      - conditions:
+        - '{{ command == ''rotate_right'' }}'
+        sequence: !input 'rotate_right'
+      - conditions:
+        - '{{ command == ''rotate_left'' }}'
+        sequence: !input 'rotate_left'
+      - conditions:
+        - '{{ command == ''brightness_step_up'' }}'
+        sequence:
+          - repeat:
+              count: '{{ (trigger.to_state.attributes.action_step_size / 13) | round }}'
+              sequence:
+                - service_template: light.turn_on
+                  target: !input light
+                  data_template:
+                    brightness_step_pct: >-
+                      {% set new_brightness = state_attr(light.entity_id, 'brightness') + value %}
+                      {% if new_brightness > 100 %} 100 {% elif new_brightness < 0 %} 0 {% else %} {{ new_brightness }} {% endif %}
+                    transition: "{{ speed }}"
+        - conditions:
+          - '{{ command == ''brightness_step_down'' }}'
+          sequence:
+            - repeat:
+                count: '{{ (trigger.to_state.attributes.action_step_size / 13) | round }}'
+                sequence:
+                  - service_template: light.turn_on
+                    target: !input light
+                    data_template:
+                      brightness_step_pct: >-
+                        {% set new_brightness = state_attr(light.entity_id, 'brightness') - value %}
+                        {% if new_brightness > 100 %} 100 {% elif new_brightness < 0 %} 0 {% else %} {{ new_brightness }} {% endif %}
+                      transition: "{{ speed }}"
+      - conditions:
+        - '{{ command == ''color_temperature_step_up'' }}'
+        sequence: !input 'color_temperature_step_up'
+      - conditions:
+        - '{{ command == ''color_temperature_step_down'' }}'
+        sequence: !input 'color_temperature_step_down'
+      - conditions:
+        - '{{ command == ''move_hue'' }}'
+        sequence: !input 'move_hue'
+      - conditions:
+        - '{{ command == ''stop_move_step'' }}'
+        sequence: !input 'stop_move_step'
